@@ -1,0 +1,302 @@
+/* EmpireSnap clone — injected UI styles (namespaced .empiresnap-) */
+.empiresnap-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 2147483600;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.empiresnap-fab-main {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  box-shadow: 0 8px 22px rgba(79, 70, 229, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.empiresnap-fab-main:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 12px 26px rgba(79, 70, 229, 0.55);
+}
+.empiresnap-menu {
+  position: absolute;
+  right: 0;
+  bottom: 64px;
+  width: 230px;
+  background: #1c1e26;
+  border: 1px solid #2c2f3a;
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.empiresnap-fab.open .empiresnap-menu {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.empiresnap-menu-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8b8fa3;
+  padding: 4px 8px 8px;
+  font-weight: 700;
+}
+.empiresnap-menu > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #e6e7ee;
+  font-size: 14px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.empiresnap-menu > button:hover {
+  background: #2a2d3a;
+}
+.empiresnap-scale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 8px;
+  border-top: 1px solid #2c2f3a;
+  color: #8b8fa3;
+  font-size: 13px;
+}
+.empiresnap-seg {
+  display: flex;
+  gap: 4px;
+}
+.empiresnap-seg button {
+  background: #2a2d3a;
+  color: #c7c9d6;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.empiresnap-seg button.active {
+  background: #6366f1;
+  color: #fff;
+}
+
+/* element picker */
+.empiresnap-hl {
+  position: fixed;
+  z-index: 2147483640;
+  pointer-events: none;
+  border: 2px solid #6366f1;
+  background: rgba(99, 102, 241, 0.16);
+  border-radius: 6px;
+  transition: all 0.05s linear;
+}
+.empiresnap-pick-hint {
+  position: fixed;
+  z-index: 2147483641;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #6366f1;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font: 600 13px -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+/* busy */
+.empiresnap-busy {
+  position: fixed;
+  z-index: 2147483645;
+  bottom: 90px;
+  right: 22px;
+  background: #1c1e26;
+  color: #e6e7ee;
+  border: 1px solid #2c2f3a;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 13px -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+.empiresnap-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #3a3d4a;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: empiresnap-spin 0.7s linear infinite;
+}
+@keyframes empiresnap-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* toast */
+.empiresnap-toast {
+  position: fixed;
+  z-index: 2147483646;
+  bottom: 22px;
+  left: 50%;
+  transform: translate(-50%, 16px);
+  background: #16a34a;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font: 600 13px -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.empiresnap-toast.is-err {
+  background: #dc2626;
+}
+.empiresnap-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* preview modal */
+.empiresnap-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: rgba(8, 9, 13, 0.72);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.empiresnap-modal {
+  width: min(880px, 96vw);
+  max-height: 92vh;
+  background: #15171e;
+  border: 1px solid #2c2f3a;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+.empiresnap-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #2c2f3a;
+  color: #e6e7ee;
+}
+.empiresnap-logo-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+.empiresnap-modal-head strong {
+  font-size: 15px;
+}
+.empiresnap-dim {
+  color: #7b7f92;
+  font-size: 12px;
+}
+.empiresnap-x {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #9aa0b4;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.empiresnap-x:hover {
+  color: #fff;
+}
+.empiresnap-modal-body {
+  overflow: auto;
+  padding: 16px;
+  background: #0d0e12;
+  display: flex;
+  justify-content: center;
+}
+.empiresnap-modal-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.empiresnap-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid #2c2f3a;
+}
+.empiresnap-btn {
+  border: 1px solid #2c2f3a;
+  background: #232634;
+  color: #e6e7ee;
+  padding: 9px 16px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.empiresnap-btn:hover {
+  background: #2c3040;
+}
+.empiresnap-btn.ghost {
+  background: transparent;
+}
+.empiresnap-btn.primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border-color: transparent;
+  color: #fff;
+}
+.empiresnap-btn.primary:hover {
+  filter: brightness(1.08);
+}
+
+/* first-run coach mark */
+.empiresnap-intro {
+  position: fixed;
+  right: 22px;
+  bottom: 92px;
+  z-index: 2147483599;
+  width: 290px;
+  background: #1c1e26;
+  border: 1px solid #2c2f3a;
+  border-radius: 14px;
+  padding: 16px;
+  color: #e6e7ee;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.empiresnap-intro.show { opacity: 1; transform: translateY(0); }
+.empiresnap-intro strong { font-size: 14px; display: block; margin-bottom: 6px; }
+.empiresnap-intro p { margin: 0 0 12px; font-size: 12.5px; line-height: 1.5; color: #a8adbe; }
+.empiresnap-intro kbd {
+  background: #2a2d3a; border: 1px solid #3a3d4a; border-radius: 4px;
+  padding: 1px 5px; font-size: 11px; color: #e6e7ee;
+}

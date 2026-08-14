@@ -1,0 +1,63 @@
+{
+  "name": "empiresnap-desktop",
+  "productName": "EmpireSnap",
+  "version": "1.0.0",
+  "description": "Capture a TradingView indicator's entire settings dialog into one shareable image \u2014 standalone desktop app.",
+  "author": "2QuartersIn",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis portable",
+    "dist:installer": "electron-builder --win nsis",
+    "publish": "electron-builder --win nsis --publish always"
+  },
+  "devDependencies": {
+    "electron": "^31.7.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "build": {
+    "appId": "co.2quartersin.empiresnap",
+    "productName": "EmpireSnap",
+    "files": [
+      "main.js",
+      "inject/**/*",
+      "build/icon.*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "EmpireSnap-${version}-${target}.${ext}"
+    },
+    "portable": {
+      "artifactName": "EmpireSnap-${version}-portable.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "EmpireSnap",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "EmpireSnap-${version}-setup.exe"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "2QuartersIn",
+        "repo": "EmpireSnap"
+      }
+    ]
+  }
+}

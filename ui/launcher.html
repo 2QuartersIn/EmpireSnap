@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>EmpireSnap</title>
+    <style>
+      :root {
+        --indigo: #6366f1;
+        --indigo-d: #4f46e5;
+        --bg: #0e0f14;
+        --card: #191b23;
+        --line: #2a2d38;
+        --text: #e9eaf0;
+        --dim: #8b90a3;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        display: flex;
+        flex-direction: column;
+        user-select: none;
+        overflow: hidden;
+      }
+
+      /* drag region so the frameless window can be moved */
+      .drag { -webkit-app-region: drag; height: 28px; flex: none; }
+
+      .wrap {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 4px 30px 22px;
+      }
+
+      .logo {
+        width: 62px; height: 62px; border-radius: 17px;
+        background: linear-gradient(135deg, var(--indigo), var(--indigo-d));
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 12px 30px rgba(79, 70, 229, 0.4);
+        margin-bottom: 14px;
+      }
+      h1 { margin: 0; font-size: 25px; letter-spacing: -0.4px; }
+      .tag { margin: 6px 0 22px; color: var(--dim); font-size: 13px; text-align: center; line-height: 1.5; }
+      .brand { color: var(--indigo); font-weight: 600; }
+
+      .opt {
+        width: 100%;
+        display: flex; gap: 14px; align-items: flex-start;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        padding: 15px 16px;
+        margin-bottom: 11px;
+        cursor: pointer;
+        text-align: left;
+        color: inherit;
+        font: inherit;
+        transition: border-color 0.15s ease, transform 0.12s ease, background 0.15s ease;
+        -webkit-app-region: no-drag;
+      }
+      .opt:hover { border-color: var(--indigo); background: #1e212b; transform: translateY(-1px); }
+      .opt .ic {
+        width: 38px; height: 38px; border-radius: 10px; flex: none;
+        background: rgba(99, 102, 241, 0.16); color: #aab0ff;
+        display: flex; align-items: center; justify-content: center; font-size: 18px;
+      }
+      .opt b { display: block; font-size: 14px; margin-bottom: 3px; }
+      .opt span { display: block; font-size: 12.2px; color: var(--dim); line-height: 1.45; }
+
+      .foot {
+        margin-top: auto; padding-top: 14px;
+        display: flex; align-items: center; justify-content: space-between;
+        width: 100%; font-size: 11.5px; color: #62667a;
+      }
+      .foot a { color: #62667a; text-decoration: none; -webkit-app-region: no-drag; }
+      .foot a:hover { color: var(--indigo); }
+      label.skip { display: flex; align-items: center; gap: 6px; cursor: pointer; -webkit-app-region: no-drag; }
+    </style>
+  </head>
+  <body>
+    <div class="drag"></div>
+    <div class="wrap">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
+      <h1>EmpireSnap</h1>
+      <p class="tag">
+        Capture complete indicator settings in one image.<br />
+        by <span class="brand">2QuartersIn</span>
+      </p>
+
+      <button class="opt" id="tv">
+        <span class="ic">📈</span>
+        <span>
+          <b>TradingView Settings Capture</b>
+          <span>Opens TradingView. Grabs every settings tab — including rows scrolled out of view — as one image.</span>
+        </span>
+      </button>
+
+      <button class="opt" id="win">
+        <span class="ic">🖥️</span>
+        <span>
+          <b>Capture a Window or Screen</b>
+          <span>Pick any open window or monitor and snapshot exactly what's visible on it.</span>
+        </span>
+      </button>
+
+      <div class="foot">
+        <label class="skip">
+          <input type="checkbox" id="skip" /> Skip this screen next time
+        </label>
+        <span id="ver">v1.0.0</span>
+      </div>
+    </div>
+
+    <script src="renderer-launcher.js"></script>
+  </body>
+</html>

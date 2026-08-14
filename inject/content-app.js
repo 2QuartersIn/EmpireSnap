@@ -52,6 +52,7 @@
       <button data-act="all">📚 Capture All Tabs</button>
       <button data-act="one">📷 Capture Current Panel</button>
       <button data-act="pick">🎯 Pick Element</button>
+      <button data-act="window" class="empiresnap-native-only">🖥️ Capture a Window</button>
       <div class="empiresnap-scale">
         <span>Quality</span>
         <div class="empiresnap-seg">
@@ -101,29 +102,168 @@
   }
   setTimeout(syncScaleUI, 50);
 
-  mainBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    fab.classList.toggle("open");
-  });
-  document.addEventListener("click", (e) => {
-    if (!fab.contains(e.target)) fab.classList.remove("open");
-  });
+  /* ---- event shield -------------------------------------------------
+   * TradingView closes its settings dialog when it sees a pointer event
+   * outside the dialog — and it reacts on pointerdown/mousedown, which
+   * fire BEFORE click. So merely handling our own click was too late:
+   * pressing the camera button dismissed the very dialog we were about
+   * to capture.
+   *
+   * Fix: one listener on `window` in the CAPTURE phase. Capture runs
+   * window -> document -> ... -> target, so this sees the event before
+   * any document-level handler TradingView registered. For anything
+   * aimed at our own UI we act on it here and stop it dead, so the page
+   * never learns the click happened. Our UI is driven entirely from
+   * this handler, since stopping propagation also prevents the event
+   * reaching our own child elements.
+   */
+  const OURS = ".empiresnap-fab, .empiresnap-overlay, .empiresnap-intro, .empiresnap-pick-hint";
 
-  menu.addEventListener("click", async (e) => {
-    const scaleBtn = e.target.closest("[data-scale]");
+  function inOurUI(node) {
+    return !!(node && node.closest && node.closest(OURS));
+  }
+
+  ["pointerdown", "mousedown", "pointerup", "mouseup", "click", "dblclick"].forEach(
+    (type) => {
+      window.addEventListener(
+        type,
+        (e) => {
+          if (pickerActive) return; // element picker needs raw page events
+          if (!inOurUI(e.target)) {
+            // a genuine click elsewhere just closes our menu
+            if (type === "mousedown") fab.classList.remove("open");
+            return;
+          }
+          // our UI: swallow it so TradingView never sees an "outside click"
+          e.stopPropagation();
+          if (typeof e.stopImmediatePropagation === "function")
+            e.stopImmediatePropagation();
+          // block focus stealing from the dialog, but leave real clicks alone
+          if (type === "pointerdown" || type === "mousedown") e.preventDefault();
+          if (type === "click") handleUiClick(e);
+        },
+        true // capture phase
+      );
+    }
+  );
+
+  async function handleUiClick(e) {
+    const t = e.target;
+
+    if (t.closest(".empiresnap-fab-main")) {
+      fab.classList.toggle("open");
+      return;
+    }
+
+    const scaleBtn = t.closest("[data-scale]");
     if (scaleBtn) {
       prefs.scale = +scaleBtn.dataset.scale;
       syncScaleUI();
       savePrefs();
       return;
     }
-    const act = e.target.closest("[data-act]");
-    if (!act) return;
-    fab.classList.remove("open");
-    const mode = act.dataset.act;
-    if (mode === "pick") return startPicker();
-    await runCapture(mode);
-  });
+
+    const act = t.closest("[data-act]");
+    if (act) {
+      fab.classList.remove("open");
+      const mode = act.dataset.act;
+      if (mode === "pick") return startPicker();
+      if (mode === "window") return captureWindow();
+      return runCapture(mode);
+    }
+
+    // preview modal + coach mark buttons register their own onclick
+    const own = t.closest("[data-a]");
+    if (own && typeof own.onclick === "function") own.onclick(e);
+  }
+
+  const native =
+    typeof window !== "undefined" && window.empiresnapNative
+      ? window.empiresnapNative
+      : null;
+
+  // hide desktop-only entries when running as an extension/userscript
+  if (!native) {
+    fab.querySelectorAll(".empiresnap-native-only").forEach((el) => el.remove());
+  }
+
+  /* Native window/screen capture — hands off to the main process, which owns
+   * the OS-level capture. Only what is visible on that window is captured;
+   * for full settings (scrolled + other tabs) use Capture All Tabs. */
+  async function captureWindow() {
+    if (!native) {
+      toast("Window capture is only available in the desktop app", "err");
+      return;
+    }
+    showBusy(true);
+    try {
+      const list = await native.listSources();
+      showBusy(false);
+      if (!list || !list.length) {
+        toast("No capturable windows found", "err");
+        return;
+      }
+      showSourcePicker(list);
+    } catch (err) {
+      showBusy(false);
+      toast("Could not list windows: " + (err.message || err), "err");
+    }
+  }
+
+  function showSourcePicker(list) {
+    const ov = $("div", "empiresnap-overlay");
+    const cards = list
+      .map(
+        (s, i) =>
+          '<button class="empiresnap-src" data-i="' + i + '">' +
+          '<span class="th">' +
+          (s.thumbnail ? '<img src="' + s.thumbnail + '">' : "") +
+          '</span><span class="nm"></span></button>'
+      )
+      .join("");
+    ov.innerHTML =
+      '<div class="empiresnap-modal">' +
+      '<div class="empiresnap-modal-head"><span class="empiresnap-logo-dot"></span>' +
+      "<strong>Capture a Window or Screen</strong>" +
+      '<span class="empiresnap-dim">visible content only</span>' +
+      '<button class="empiresnap-x">&times;</button></div>' +
+      '<div class="empiresnap-modal-body"><div class="empiresnap-srcgrid">' +
+      cards +
+      "</div></div></div>";
+    document.body.appendChild(ov);
+    // set names as text (avoids HTML injection from window titles)
+    ov.querySelectorAll(".empiresnap-src").forEach((el, i) => {
+      el.querySelector(".nm").textContent = list[i].name;
+      el.addEventListener("click", async () => {
+        ov.remove();
+        showBusy(true);
+        try {
+          const res = await native.captureSource(list[i].id);
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement("canvas");
+            c.width = img.naturalWidth;
+            c.height = img.naturalHeight;
+            c.getContext("2d").drawImage(img, 0, 0);
+            showBusy(false);
+            showPreview(c);
+          };
+          img.onerror = () => {
+            showBusy(false);
+            toast("Could not read capture", "err");
+          };
+          img.src = res.dataUrl;
+        } catch (err) {
+          showBusy(false);
+          toast("Capture failed: " + (err.message || err), "err");
+        }
+      });
+    });
+    ov.querySelector(".empiresnap-x").onclick = () => ov.remove();
+    ov.addEventListener("click", (e) => {
+      if (e.target === ov) ov.remove();
+    });
+  }
 
   async function runCapture(mode, targetEl) {
     const dialog = targetEl || Core.findSettingsDialog();

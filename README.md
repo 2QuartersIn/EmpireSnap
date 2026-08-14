@@ -110,6 +110,23 @@ Public repos get unlimited free Actions minutes. Private repos have a monthly
 allowance, and Windows runners bill at 2x — a build only takes a few minutes,
 so either is fine at this volume.
 
+## What's in 1.1.0
+
+- **Branded home screen** on launch — choose *TradingView Settings Capture* or
+  *Capture a Window or Screen*. Tick "Skip this screen next time" to go
+  straight to TradingView on future launches.
+- **Window / screen capture** — pick any open window or monitor and snapshot
+  it, at full resolution. Available from the home screen, the in-app menu
+  (`Alt`+`W`), or the camera button's menu. Note this captures only what is
+  *visible* on that window; for settings that are scrolled out of view or on
+  other tabs, use **Capture All Tabs**.
+- **Fixed: capturing no longer closes the settings dialog.** TradingView
+  dismisses its dialog on any pointer press outside it, and it reacts on
+  pointerdown — before a click ever lands. Pressing the camera button was
+  therefore closing the very dialog being captured. EmpireSnap now intercepts
+  pointer events aimed at its own UI in the capture phase, so the page never
+  sees them. Clicks genuinely outside still dismiss the dialog as normal.
+
 ## Using it
 
 1. Launch the app. Sign in to TradingView as normal — the session persists

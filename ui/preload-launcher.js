@@ -7,4 +7,6 @@ contextBridge.exposeInMainWorld("empiresnapLauncher", {
   getSkip: () => ipcRenderer.invoke("empiresnap:get-skip-launcher"),
   setSkip: (v) => ipcRenderer.invoke("empiresnap:set-skip-launcher", v),
   getVersion: () => ipcRenderer.invoke("empiresnap:get-version"),
+  quitApp: () => ipcRenderer.invoke("empiresnap:quit"),
+  minimise: () => ipcRenderer.invoke("empiresnap:minimise"),
 });

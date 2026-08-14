@@ -226,8 +226,16 @@
     const scroller = findScroller(dialog);
     if (!scroller) {
       const shot = await shootRegion(dialog);
-      return stitchSideBySide([shot.canvas], opts.scale || 2, ["Settings"]);
+      return stitchSideBySide([shot.canvas], opts.scale || 2, ["Settings"], opts);
     }
+
+    /* hide the scrollbar for the duration — otherwise every section carries
+     * a grey scrollbar strip down its right edge */
+    const hideBars = document.createElement("style");
+    hideBars.textContent =
+      "*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}" +
+      "*{scrollbar-width:none!important}";
+    document.head.appendChild(hideBars);
 
     const restoreTo = scroller.scrollTop;
     const view = scroller.clientHeight;
@@ -258,55 +266,234 @@
         }
       }
 
+      /* Trim the partial row hanging off the bottom edge, and advance the
+       * scroll by exactly what we kept — so the next section begins on a
+       * clean row boundary instead of slicing one in half. */
+      let advanceCss = view;
+      const atEnd = actual + view >= total - 2;
+      if (!atEnd) {
+        const pxPerCss = canvas.height / (shot.rect.height || view);
+        const ctx2 = canvas.getContext("2d");
+        const searchPx = Math.min(38 * pxPerCss, canvas.height * 0.25);
+        const cut = quietRow(
+          ctx2,
+          canvas.width,
+          canvas.height - searchPx / 2,
+          searchPx / 2
+        );
+        if (cut > canvas.height * 0.5 && cut < canvas.height) {
+          const trimmed = document.createElement("canvas");
+          trimmed.width = canvas.width;
+          trimmed.height = cut;
+          trimmed
+            .getContext("2d")
+            .drawImage(canvas, 0, 0, canvas.width, cut, 0, 0, canvas.width, cut);
+          canvas = trimmed;
+          advanceCss = cut / pxPerCss;
+        }
+      }
+
       shots.push(canvas);
       labels.push("Section " + (i + 1));
       prevTop = actual;
 
-      if (actual + view >= total - 2) break;
-      scroller.scrollTop = actual + view;
+      if (atEnd) break;
+      scroller.scrollTop = actual + advanceCss;
       await sleep(200);
       if (scroller.scrollTop === actual) break; // didn't move; stop
       i++;
     }
 
     scroller.scrollTop = restoreTo;
+    hideBars.remove();
     await sleep(60);
-    return stitchSideBySide(shots, opts.scale || 2, labels);
+    return decorate(
+      stitchSideBySide(shots, opts.scale || 2, labels, opts),
+      captureMeta(dialog),
+      opts.scale || 2,
+      opts
+    );
   }
 
   /* lay sections out left-to-right, tops aligned */
-  function stitchSideBySide(canvases, scale, labels) {
+  /* Lay sections out in a GRID rather than a single row.
+   *
+   * One row was fine for 4 sections and absurd for 21 — a 9,000px-wide strip
+   * is as unusable as the 20,000px-tall one it replaced. We wrap sections
+   * into rows, choosing the column count that lands nearest a comfortable
+   * landscape ratio. Reading order is left-to-right, top-to-bottom. */
+  function stitchSideBySide(canvases, scale, labels, opts) {
+    opts = opts || {};
     const pad = 14 * scale;
     const gap = 12 * scale;
-    const labelH = 30 * scale;
-    const width =
-      pad * 2 +
-      canvases.reduce((w, c) => w + c.width, 0) +
-      gap * (canvases.length - 1);
-    const height = pad * 2 + labelH + Math.max(...canvases.map((c) => c.height));
+    const labelH = 22 * scale;
+    const n = canvases.length;
+
+    const cellW = Math.max(...canvases.map((c) => c.width));
+    const cellH = Math.max(...canvases.map((c) => c.height)) + labelH;
+
+    // cols such that (cols*cellW) / (rows*cellH) ~= targetRatio
+    const targetRatio = opts.ratio || 1.45;
+    let cols = Math.round(Math.sqrt((targetRatio * n * cellH) / cellW));
+    cols = Math.max(1, Math.min(cols, n));
+    const rows = Math.ceil(n / cols);
+
+    // per-row height = tallest cell in that row (section 1 is taller: it
+    // includes the dialog title and tabs)
+    const rowH = [];
+    for (let r = 0; r < rows; r++) {
+      let h = 0;
+      for (let c = 0; c < cols; c++) {
+        const i = r * cols + c;
+        if (i < n) h = Math.max(h, canvases[i].height + labelH);
+      }
+      rowH.push(h);
+    }
+
+    const outW = pad * 2 + cols * cellW + (cols - 1) * gap;
+    const outH =
+      pad * 2 + rowH.reduce((a, b) => a + b, 0) + (rows - 1) * gap;
 
     const out = document.createElement("canvas");
-    out.width = width;
-    out.height = height;
+    out.width = outW;
+    out.height = outH;
     const ctx = out.getContext("2d");
     ctx.fillStyle = "#0f1014";
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, outW, outH);
 
-    let x = pad;
-    canvases.forEach((c, i) => {
-      ctx.fillStyle = "#6366F1";
-      ctx.fillRect(x, pad, c.width, labelH);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = `600 ${14 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
-      ctx.textBaseline = "middle";
-      ctx.fillText(
-        String(labels[i] || "Section " + (i + 1)).toUpperCase(),
-        x + 10 * scale,
-        pad + labelH / 2
+    let y = pad;
+    for (let r = 0; r < rows; r++) {
+      let x = pad;
+      for (let c = 0; c < cols; c++) {
+        const i = r * cols + c;
+        if (i >= n) break;
+        const cv = canvases[i];
+        ctx.fillStyle = "#6366F1";
+        ctx.fillRect(x, y, cv.width, labelH);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `700 ${11 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          String(labels[i] || "Section " + (i + 1)).toUpperCase(),
+          x + 9 * scale,
+          y + labelH / 2
+        );
+        ctx.drawImage(cv, x, y + labelH);
+        x += cellW + gap;
+      }
+      y += rowH[r] + gap;
+    }
+    return out;
+  }
+
+  // ---- branding / context header -----------------------------------------
+  /* A capture with no context is hard to read weeks later: which indicator,
+   * which symbol, which timeframe, when. The original tool framed its output
+   * with a header and a credit line; this does the same. */
+
+  function captureMeta(dialog) {
+    const meta = { indicator: "", symbol: "", timeframe: "", tab: "" };
+
+    // indicator name: first non-empty line of the dialog
+    try {
+      const lines = (dialog.innerText || "")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length) meta.indicator = lines[0].slice(0, 70);
+      // active tab, if one is marked
+      const act = dialog.querySelector(
+        '[role="tab"][aria-selected="true"], [role="tab"].active, [role="tab"][class*="active"]'
       );
-      ctx.drawImage(c, x, pad + labelH);
-      x += c.width + gap;
-    });
+      if (act) meta.tab = (act.innerText || "").trim();
+    } catch (e) {}
+
+    // symbol + timeframe from the page title, e.g.
+    // "MNQU2026 30,069.50 ▼ −0.39% ict · 1m — TradingView"
+    try {
+      const t = (document.title || "").replace(/[—–-]\s*TradingView.*$/i, "").trim();
+      if (t) meta.symbol = t.slice(0, 80);
+      const tf = t.match(/(?:^|[·|,\s])(\d+\s?(?:s|m|h|D|W|M)|\d+\s?(?:min|hour|day))\b/);
+      if (tf) meta.timeframe = tf[1].replace(/\s+/g, "");
+    } catch (e) {}
+
+    return meta;
+  }
+
+  function fmtStamp(d) {
+    const p = (n) => String(n).padStart(2, "0");
+    let h = d.getHours();
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return (
+      `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}, ` +
+      `${h}:${p(d.getMinutes())}:${p(d.getSeconds())} ${ampm}`
+    );
+  }
+
+  /* wrap a finished capture in a header bar + footer credit */
+  function decorate(canvas, meta, scale, opts) {
+    opts = opts || {};
+    if (opts.brand === false) return canvas;
+    const headH = 62 * scale;
+    const footH = 30 * scale;
+    const out = document.createElement("canvas");
+    out.width = canvas.width;
+    out.height = canvas.height + headH + footH;
+    const ctx = out.getContext("2d");
+
+    ctx.fillStyle = "#0f1014";
+    ctx.fillRect(0, 0, out.width, out.height);
+
+    // header band
+    const grad = ctx.createLinearGradient(0, 0, out.width, 0);
+    grad.addColorStop(0, "#6366F1");
+    grad.addColorStop(1, "#4F46E5");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, out.width, headH);
+
+    const padX = 18 * scale;
+    ctx.textBaseline = "middle";
+
+    // left: indicator name + symbol/timeframe
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `700 ${20 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
+    const name = meta.indicator || "Indicator settings";
+    ctx.fillText(name, padX, headH * 0.36);
+
+    ctx.fillStyle = "rgba(255,255,255,0.86)";
+    ctx.font = `500 ${13 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
+    const sub = [meta.symbol, meta.tab ? meta.tab.toUpperCase() : ""]
+      .filter(Boolean)
+      .join("   ·   ");
+    if (sub) ctx.fillText(sub, padX, headH * 0.71);
+
+    // right: brand + timestamp
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `700 ${16 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
+    ctx.fillText("EmpireSnap", out.width - padX, headH * 0.36);
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.font = `500 ${12 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
+    ctx.fillText(fmtStamp(new Date()), out.width - padX, headH * 0.71);
+    ctx.textAlign = "left";
+
+    // body
+    ctx.drawImage(canvas, 0, headH);
+
+    // footer credit
+    ctx.fillStyle = "#15171e";
+    ctx.fillRect(0, out.height - footH, out.width, footH);
+    ctx.fillStyle = "#7b7f92";
+    ctx.font = `500 ${12 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(
+      "Captured with EmpireSnap  ·  2QuartersIn",
+      out.width / 2,
+      out.height - footH / 2
+    );
+    ctx.textAlign = "left";
+
     return out;
   }
 
@@ -404,9 +591,11 @@
       await sleep(120);
     }
 
-    return opts.layout === "single"
-      ? stitch(slices, opts.scale || 2)
-      : stitchColumns(slices, opts.scale || 2, opts);
+    const body =
+      opts.layout === "single"
+        ? stitch(slices, opts.scale || 2)
+        : stitchColumns(slices, opts.scale || 2, opts);
+    return decorate(body, captureMeta(dialog), opts.scale || 2, opts);
   }
 
   // ---- stitch slices into one labelled image -----------------------------
@@ -636,6 +825,8 @@
     captureElement,
     captureAllTabs,
     stitchColumns,
+    decorate,
+    captureMeta,
     scrollCapture,
     findScroller,
     findTabs,

@@ -78,7 +78,7 @@ function inject(wc) {
 function createSplash() {
   splashWin = new BrowserWindow({
     width: 380,
-    height: 300,
+    height: 350,
     frame: false,
     // NOT transparent: transparent windows render unreliably on Windows
     // (washed-out or missing text). Opaque + a dark background is safe.
@@ -211,6 +211,18 @@ function pngFromDataUrl(dataUrl) {
 
 function registerIpc() {
   ipcMain.handle("empiresnap:get-version", () => app.getVersion());
+
+  ipcMain.handle("empiresnap:quit", () => {
+    quitting = true;
+    app.quit();
+    return true;
+  });
+
+  ipcMain.handle("empiresnap:minimise", (e) => {
+    const w = BrowserWindow.fromWebContents(e.sender);
+    if (w) w.minimize();
+    return true;
+  });
 
   ipcMain.handle("empiresnap:get-skip-launcher", () => !!cfgRead().skipLauncher);
   ipcMain.handle("empiresnap:set-skip-launcher", (e, v) => {

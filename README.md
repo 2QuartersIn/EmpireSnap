@@ -110,6 +110,27 @@ Public repos get unlimited free Actions minutes. Private repos have a monthly
 allowance, and Windows runners bill at 2x — a build only takes a few minutes,
 so either is fine at this volume.
 
+## What's in 1.6.1
+
+- Splash screen credits 2QuartersIn, Chizz and the EmpireTrading Team.
+
+## What's in 1.6.0
+
+- Branded header (indicator, symbol, timeframe, tab, timestamp) and footer
+  credit on every capture.
+- Scrollbars hidden during capture; section boundaries snap to row edges so
+  no setting is sliced in half; slimmer section labels.
+
+## What's in 1.5.2
+
+- **Scroll Capture sections wrap into a grid** instead of one very long row.
+  A 21-section capture goes from ~9,000px wide to 2226x1198.
+
+## What's in 1.5.1
+
+- **Close and minimise buttons on the home screen.** It's a frameless window,
+  so it had no title bar and no way to quit from it.
+
 ## What's in 1.5.0
 
 - **Scroll Capture (this tab)** — the original IndiSnap technique. Instead of

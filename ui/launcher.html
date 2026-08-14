@@ -27,7 +27,19 @@
       }
 
       /* drag region so the frameless window can be moved */
-      .drag { -webkit-app-region: drag; height: 28px; flex: none; }
+      .drag {
+        -webkit-app-region: drag; height: 32px; flex: none;
+        display: flex; align-items: center; justify-content: flex-end;
+        padding-right: 6px; gap: 2px;
+      }
+      .wbtn {
+        -webkit-app-region: no-drag;
+        width: 34px; height: 26px; border: none; background: transparent;
+        color: #8b90a3; font-size: 15px; line-height: 1; cursor: pointer;
+        border-radius: 7px; display: flex; align-items: center; justify-content: center;
+      }
+      .wbtn:hover { background: #242733; color: #e9eaf0; }
+      .wbtn.close:hover { background: #dc2626; color: #fff; }
 
       .wrap {
         flex: 1;
@@ -84,7 +96,10 @@
     </style>
   </head>
   <body>
-    <div class="drag"></div>
+    <div class="drag">
+      <button class="wbtn" id="min" title="Minimise">&#8211;</button>
+      <button class="wbtn close" id="quit" title="Close EmpireSnap">&times;</button>
+    </div>
     <div class="wrap">
       <div class="logo">
         <img src="../build/icon.png" alt="EmpireSnap"

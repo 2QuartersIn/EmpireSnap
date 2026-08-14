@@ -24,6 +24,11 @@
     });
   }
 
+  const minBtn = document.getElementById("min");
+  const quitBtn = document.getElementById("quit");
+  if (minBtn) minBtn.addEventListener("click", () => api.minimise && api.minimise());
+  if (quitBtn) quitBtn.addEventListener("click", () => api.quitApp && api.quitApp());
+
   document.getElementById("tv").addEventListener("click", () => {
     api.openTradingView && api.openTradingView();
   });

@@ -133,6 +133,183 @@
     };
   }
 
+  // ---- scroll capture -----------------------------------------------------
+  /* Photograph the settings list one screenful at a time while scrolling it,
+   * then lay the sections out side by side.
+   *
+   * Why this exists alongside the expand-and-render path: expanding the
+   * container and handing it to html2canvas produces a re-drawing of the DOM,
+   * which can differ from what you actually see (custom controls, colour
+   * swatches, fonts), and it shows nothing for rows a virtualised list has
+   * not rendered yet. Scrolling the real list and capturing each screenful
+   * sidesteps both — and in the desktop app each screenful is a true native
+   * screenshot rather than a re-render. */
+
+  function findScroller(root) {
+    let best = null;
+    let bestOver = 0;
+    const all = [root, ...root.querySelectorAll("*")];
+    for (const el of all) {
+      const cs = getComputedStyle(el);
+      if (!/(auto|scroll)/.test(cs.overflowY)) continue;
+      const over = el.scrollHeight - el.clientHeight;
+      if (over > bestOver && el.clientHeight > 80) {
+        bestOver = over;
+        best = el;
+      }
+    }
+    return bestOver > 8 ? best : null;
+  }
+
+  function cropTopPx(canvas, px) {
+    px = Math.max(0, Math.round(px));
+    if (px <= 0 || px >= canvas.height) return canvas;
+    const out = document.createElement("canvas");
+    out.width = canvas.width;
+    out.height = canvas.height - px;
+    out
+      .getContext("2d")
+      .drawImage(canvas, 0, px, canvas.width, out.height, 0, 0, out.width, out.height);
+    return out;
+  }
+
+  function imageToCanvas(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext("2d").drawImage(img, 0, 0);
+        resolve(c);
+      };
+      img.onerror = () => reject(new Error("section image failed to load"));
+      img.src = src;
+    });
+  }
+
+  function nativeBridge() {
+    return typeof window !== "undefined" &&
+      window.empiresnapNative &&
+      typeof window.empiresnapNative.captureRegion === "function"
+      ? window.empiresnapNative
+      : null;
+  }
+
+  /* Capture the exact on-screen region of `el` as true pixels. */
+  async function shootRegion(el) {
+    const native = nativeBridge();
+    const r = el.getBoundingClientRect();
+    const res = await native.captureRegion({
+      x: r.left,
+      y: r.top,
+      width: r.width,
+      height: r.height,
+    });
+    const canvas = await imageToCanvas(res.dataUrl);
+    return { canvas, rect: r };
+  }
+
+  async function scrollCapture(dialog, opts) {
+    opts = opts || {};
+
+    /* Scroll capture depends on photographing the real screen: html2canvas
+     * re-renders from the DOM and ignores an inner container's scrollTop, so
+     * the fallback would silently produce blank and duplicated sections.
+     * Outside the desktop app we use the expand-and-render path instead. */
+    if (!nativeBridge()) {
+      const canvas = await captureElement(dialog, opts);
+      canvas.__empiresnapFellBack = true;
+      return canvas;
+    }
+
+    const scroller = findScroller(dialog);
+    if (!scroller) {
+      const shot = await shootRegion(dialog);
+      return stitchSideBySide([shot.canvas], opts.scale || 2, ["Settings"]);
+    }
+
+    const restoreTo = scroller.scrollTop;
+    const view = scroller.clientHeight;
+    const total = scroller.scrollHeight;
+    const shots = [];
+    const labels = [];
+
+    scroller.scrollTop = 0;
+    await sleep(200);
+
+    let prevTop = null;
+    let i = 0;
+    const maxSections = 24; // safety valve
+
+    while (i < maxSections) {
+      const actual = scroller.scrollTop;
+      // first section keeps the dialog chrome (title + tabs) for context
+      const shot = await shootRegion(i === 0 ? dialog : scroller);
+      let canvas = shot.canvas;
+
+      if (i > 0 && prevTop !== null) {
+        const advanced = actual - prevTop;
+        if (advanced < view) {
+          // scrolled less than a full screen — trim the repeated rows,
+          // converting CSS px to captured px via this shot's own scale
+          const pxPerCss = canvas.height / (shot.rect.height || view);
+          canvas = cropTopPx(canvas, (view - advanced) * pxPerCss);
+        }
+      }
+
+      shots.push(canvas);
+      labels.push("Section " + (i + 1));
+      prevTop = actual;
+
+      if (actual + view >= total - 2) break;
+      scroller.scrollTop = actual + view;
+      await sleep(200);
+      if (scroller.scrollTop === actual) break; // didn't move; stop
+      i++;
+    }
+
+    scroller.scrollTop = restoreTo;
+    await sleep(60);
+    return stitchSideBySide(shots, opts.scale || 2, labels);
+  }
+
+  /* lay sections out left-to-right, tops aligned */
+  function stitchSideBySide(canvases, scale, labels) {
+    const pad = 14 * scale;
+    const gap = 12 * scale;
+    const labelH = 30 * scale;
+    const width =
+      pad * 2 +
+      canvases.reduce((w, c) => w + c.width, 0) +
+      gap * (canvases.length - 1);
+    const height = pad * 2 + labelH + Math.max(...canvases.map((c) => c.height));
+
+    const out = document.createElement("canvas");
+    out.width = width;
+    out.height = height;
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = "#0f1014";
+    ctx.fillRect(0, 0, width, height);
+
+    let x = pad;
+    canvases.forEach((c, i) => {
+      ctx.fillStyle = "#6366F1";
+      ctx.fillRect(x, pad, c.width, labelH);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `600 ${14 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        String(labels[i] || "Section " + (i + 1)).toUpperCase(),
+        x + 10 * scale,
+        pad + labelH / 2
+      );
+      ctx.drawImage(c, x, pad + labelH);
+      x += c.width + gap;
+    });
+    return out;
+  }
+
   // ---- render an element to a canvas -------------------------------------
   async function captureElement(el, opts) {
     opts = opts || {};
@@ -227,10 +404,159 @@
       await sleep(120);
     }
 
-    return stitch(slices, opts.scale || 2);
+    return opts.layout === "single"
+      ? stitch(slices, opts.scale || 2)
+      : stitchColumns(slices, opts.scale || 2, opts);
   }
 
   // ---- stitch slices into one labelled image -----------------------------
+  /* ---- column layout ------------------------------------------------
+   * A single tall strip (one tab stacked under the next) can run to
+   * 20,000px — technically complete but useless to share or read. The
+   * original IndiSnap laid settings out in side-by-side columns, which
+   * keeps the whole configuration legible in one landscape image.
+   *
+   * We render each tab to a tall canvas, then flow those canvases into
+   * columns of a computed height, splitting a tab across columns when
+   * needed. Split points snap to a "quiet" pixel row so we don't slice
+   * through the middle of a settings row.
+   */
+
+  // find a horizontal row near `y` that looks like a gap between rows
+  function quietRow(ctx, w, y, searchPx) {
+    const from = Math.max(1, y - searchPx);
+    const to = Math.min(ctx.canvas.height - 1, y + searchPx);
+    if (to <= from) return y;
+    let bestY = y;
+    let bestScore = Infinity;
+    const step = Math.max(1, Math.floor(w / 160)); // sample across the width
+    for (let ry = from; ry <= to; ry++) {
+      let data;
+      try {
+        data = ctx.getImageData(0, ry, w, 1).data;
+      } catch (e) {
+        return y; // tainted canvas — fall back to the exact point
+      }
+      // score = how much this row varies horizontally; low = flat = a gap
+      let prev = -1;
+      let changes = 0;
+      for (let x = 0; x < w; x += step) {
+        const i = x * 4;
+        const lum = (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) >> 3;
+        if (prev >= 0 && Math.abs(lum - prev) > 10) changes++;
+        prev = lum;
+      }
+      const dist = Math.abs(ry - y) / (searchPx + 1); // prefer staying close
+      const score = changes + dist * 2;
+      if (score < bestScore) {
+        bestScore = score;
+        bestY = ry;
+      }
+    }
+    return bestY;
+  }
+
+  function stitchColumns(slices, scale, opts) {
+    opts = opts || {};
+    const pad = 14 * scale;
+    const gap = 12 * scale;
+    const labelH = 30 * scale;
+    const colW = Math.max(...slices.map((s) => s.canvas.width));
+
+    // total stacked height if we used one strip
+    let totalH = 0;
+    for (const s of slices) totalH += labelH + s.canvas.height + gap;
+
+    /* choose a column count that lands near a comfortable landscape ratio */
+    const targetRatio = opts.ratio || 1.45;
+    let cols = Math.round(Math.sqrt((targetRatio * totalH) / colW));
+    cols = Math.max(1, Math.min(cols, 8));
+    if (opts.maxColumnHeight) {
+      cols = Math.max(cols, Math.ceil(totalH / opts.maxColumnHeight));
+      cols = Math.min(cols, 12);
+    }
+    if (cols === 1) return stitch(slices, scale);
+
+    const colH = Math.ceil(totalH / cols);
+
+    /* flow the slices into columns, splitting where necessary */
+    const columns = [];
+    let cur = [];
+    let curY = 0;
+
+    for (const s of slices) {
+      let srcY = 0;
+      let first = true;
+      while (srcY < s.canvas.height) {
+        const room = colH - curY - labelH;
+        if (room < 60 * scale && cur.length) {
+          columns.push(cur);
+          cur = [];
+          curY = 0;
+          continue;
+        }
+        const remaining = s.canvas.height - srcY;
+        let take = Math.min(remaining, colH - curY - labelH);
+        if (take < remaining) {
+          // don't cut through a settings row
+          const ctx = s.canvas.getContext("2d");
+          const snapped = quietRow(ctx, s.canvas.width, srcY + take, 14 * scale);
+          if (snapped > srcY + 40 * scale) take = snapped - srcY;
+        }
+        cur.push({
+          label: first ? s.label : s.label + " (cont.)",
+          canvas: s.canvas,
+          sy: srcY,
+          sh: take,
+        });
+        curY += labelH + take + gap;
+        srcY += take;
+        first = false;
+        if (curY >= colH - 40 * scale) {
+          columns.push(cur);
+          cur = [];
+          curY = 0;
+        }
+      }
+    }
+    if (cur.length) columns.push(cur);
+
+    /* measure and paint */
+    const heights = columns.map((c) =>
+      c.reduce((h, p) => h + labelH + p.sh + gap, 0)
+    );
+    const outW = pad * 2 + columns.length * colW + (columns.length - 1) * gap;
+    const outH = pad * 2 + Math.max(...heights);
+
+    const out = document.createElement("canvas");
+    out.width = outW;
+    out.height = outH;
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = "#0f1014";
+    ctx.fillRect(0, 0, outW, outH);
+
+    columns.forEach((col, ci) => {
+      let x = pad + ci * (colW + gap);
+      let y = pad;
+      for (const piece of col) {
+        ctx.fillStyle = "#6366F1";
+        ctx.fillRect(x, y, colW, labelH);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `600 ${14 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
+        ctx.textBaseline = "middle";
+        ctx.fillText(piece.label.toUpperCase(), x + 10 * scale, y + labelH / 2);
+        y += labelH;
+        ctx.drawImage(
+          piece.canvas,
+          0, piece.sy, piece.canvas.width, piece.sh,
+          x, y, piece.canvas.width, piece.sh
+        );
+        y += piece.sh + gap;
+      }
+    });
+    return out;
+  }
+
   function stitch(slices, scale) {
     const pad = 14 * scale;
     const labelH = 30 * scale;
@@ -309,6 +635,9 @@
     findSettingsDialog,
     captureElement,
     captureAllTabs,
+    stitchColumns,
+    scrollCapture,
+    findScroller,
     findTabs,
     expandScroll,
     download,

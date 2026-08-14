@@ -51,8 +51,16 @@
       <div class="empiresnap-menu-title">EmpireSnap</div>
       <button data-act="all">📚 Capture All Tabs</button>
       <button data-act="one">📷 Capture Current Panel</button>
-      <button data-act="pick">🎯 Pick Element</button>
+      <button data-act="scroll">📜 Scroll Capture (this tab)</button>
       <button data-act="window" class="empiresnap-native-only">🖥️ Capture a Window</button>
+      <button data-act="home" class="empiresnap-native-only">🏠 Home Screen</button>
+      <div class="empiresnap-scale">
+        <span>Layout</span>
+        <div class="empiresnap-seg">
+          <button data-layout="columns">Columns</button>
+          <button data-layout="single">Single</button>
+        </div>
+      </div>
       <div class="empiresnap-scale">
         <span>Quality</span>
         <div class="empiresnap-seg">
@@ -95,7 +103,12 @@
   const menu = fab.querySelector(".empiresnap-menu");
   const mainBtn = fab.querySelector(".empiresnap-fab-main");
 
+  if (!prefs.layout) prefs.layout = "columns";
+
   function syncScaleUI() {
+    fab.querySelectorAll("[data-layout]").forEach((b) => {
+      b.classList.toggle("active", b.dataset.layout === prefs.layout);
+    });
     fab.querySelectorAll("[data-scale]").forEach((b) => {
       b.classList.toggle("active", +b.dataset.scale === prefs.scale);
     });
@@ -163,12 +176,24 @@
       return;
     }
 
+    const layoutBtn = t.closest("[data-layout]");
+    if (layoutBtn) {
+      prefs.layout = layoutBtn.dataset.layout;
+      syncScaleUI();
+      savePrefs();
+      return;
+    }
+
     const act = t.closest("[data-act]");
     if (act) {
       fab.classList.remove("open");
       const mode = act.dataset.act;
       if (mode === "pick") return startPicker();
       if (mode === "window") return captureWindow();
+      if (mode === "home") {
+        if (native && native.openLauncher) native.openLauncher();
+        return;
+      }
       return runCapture(mode);
     }
 
@@ -207,6 +232,13 @@
   async function captureWindow() {
     if (!native) {
       toast("Window capture is only available in the desktop app", "err");
+      return;
+    }
+    /* Prefer the standalone picker window: it has the crop tool and a back
+     * button. The in-page overlay below stays as a fallback for older
+     * builds where the bridge lacks openPicker. */
+    if (native.openPicker) {
+      native.openPicker();
       return;
     }
     showBusy(true);
@@ -284,10 +316,12 @@
     }
     showBusy(true);
     try {
-      const opts = { scale: prefs.scale };
+      const opts = { scale: prefs.scale, layout: prefs.layout };
       const canvas =
         mode === "all"
           ? await Core.captureAllTabs(dialog, opts)
+          : mode === "scroll"
+          ? await Core.scrollCapture(dialog, opts)
           : await Core.captureElement(dialog, opts);
       showPreview(canvas);
     } catch (err) {
@@ -300,6 +334,7 @@
 
   // exposed so the Electron app menu / accelerators can trigger a capture
   window.__empiresnapCapture = runCapture;
+  window.__empiresnapPick = startPicker;
 
   let pickerActive = false;
   function startPicker() {

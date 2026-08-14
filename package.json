@@ -1,7 +1,7 @@
 {
   "name": "empiresnap-desktop",
   "productName": "EmpireSnap",
-  "version": "1.1.1",
+  "version": "1.5.0",
   "description": "Capture a TradingView indicator's entire settings dialog into one shareable image \u2014 standalone desktop app.",
   "author": "2QuartersIn",
   "main": "main.js",

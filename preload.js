@@ -19,5 +19,14 @@ contextBridge.exposeInMainWorld("empiresnapNative", {
   /* copy a PNG to the OS clipboard */
   copyPng: (dataUrl) => ipcRenderer.invoke("empiresnap:copy-png", dataUrl),
 
+  /* native screenshot of a screen region (used by scroll capture) */
+  captureRegion: (rect) => ipcRenderer.invoke("empiresnap:capture-region", rect),
+
+  /* open the standalone picker window (crop + back button) */
+  openPicker: () => ipcRenderer.invoke("empiresnap:open-picker"),
+
+  /* back to the branded home screen */
+  openLauncher: () => ipcRenderer.invoke("empiresnap:open-launcher"),
+
   isDesktopApp: true,
 });

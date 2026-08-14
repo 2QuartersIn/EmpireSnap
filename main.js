@@ -32,6 +32,8 @@ const CHROME_UA =
   "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 app.userAgentFallback = CHROME_UA;
 
+let quitting = false;
+let splashWin = null;
 let launcherWin = null;
 let chartWin = null;
 let pickerWin = null;
@@ -72,8 +74,37 @@ function inject(wc) {
   );
 }
 
+/* ---------- splash ---------- */
+function createSplash() {
+  splashWin = new BrowserWindow({
+    width: 380,
+    height: 300,
+    frame: false,
+    // NOT transparent: transparent windows render unreliably on Windows
+    // (washed-out or missing text). Opaque + a dark background is safe.
+    transparent: false,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: "#0e0f14",
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  splashWin.loadFile(path.join(UI_DIR, "splash.html"));
+  splashWin.on("closed", () => {
+    splashWin = null;
+  });
+  return splashWin;
+}
+
+function closeSplash() {
+  if (splashWin && !splashWin.isDestroyed()) splashWin.close();
+  splashWin = null;
+}
+
 /* ---------- launcher ---------- */
 function createLauncher() {
+  if (quitting) return;
   if (launcherWin) {
     launcherWin.focus();
     return;
@@ -144,8 +175,6 @@ function createChartWindow() {
 
   chartWin.on("closed", () => {
     chartWin = null;
-    // no chart open and launcher was skipped -> show launcher again
-    if (!launcherWin && !pickerWin) createLauncher();
   });
 
   return chartWin;
@@ -172,7 +201,6 @@ function createPicker() {
   pickerWin.loadFile(path.join(UI_DIR, "picker.html"));
   pickerWin.on("closed", () => {
     pickerWin = null;
-    if (!chartWin && !launcherWin) createLauncher();
   });
 }
 
@@ -196,9 +224,22 @@ function registerIpc() {
     return true;
   });
 
+  ipcMain.handle("empiresnap:open-launcher", () => {
+    createLauncher();
+    if (pickerWin) pickerWin.close();
+    return true;
+  });
+
   ipcMain.handle("empiresnap:open-window-capture", () => {
     createPicker();
     if (launcherWin) launcherWin.close();
+    return true;
+  });
+
+  // from the TradingView window: open the full picker window rather than the
+  // in-page overlay, so window capture behaves the same everywhere
+  ipcMain.handle("empiresnap:open-picker", () => {
+    createPicker();
     return true;
   });
 
@@ -242,6 +283,22 @@ function registerIpc() {
     return { name: hit.name, dataUrl: hit.thumbnail.toDataURL() };
   });
 
+  /* native screenshot of a region of the chart window — true pixels, no
+   * html2canvas re-render. Rect arrives in CSS px from the page. */
+  ipcMain.handle("empiresnap:capture-region", async (e, rect) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) throw new Error("No window");
+    const z = e.sender.getZoomFactor ? e.sender.getZoomFactor() : 1;
+    const r = {
+      x: Math.max(0, Math.round(rect.x * z)),
+      y: Math.max(0, Math.round(rect.y * z)),
+      width: Math.max(1, Math.round(rect.width * z)),
+      height: Math.max(1, Math.round(rect.height * z)),
+    };
+    const img = await win.webContents.capturePage(r);
+    return { dataUrl: img.toDataURL() };
+  });
+
   ipcMain.handle("empiresnap:save-png", async (e, dataUrl, suggested) => {
     const parent = BrowserWindow.fromWebContents(e.sender) || undefined;
     const out = dialog.showSaveDialogSync(parent, {
@@ -282,6 +339,18 @@ function buildMenu() {
               .catch(() => {}),
         },
         {
+          label: "Scroll Capture (current tab)",
+          accelerator: "Alt+A",
+          click: () =>
+            chartWin &&
+            chartWin.webContents
+              .executeJavaScript(
+                "window.__empiresnapCapture && window.__empiresnapCapture('scroll')",
+                true
+              )
+              .catch(() => {}),
+        },
+        {
           label: "Capture Current Panel",
           accelerator: "Alt+D",
           click: () =>
@@ -298,6 +367,18 @@ function buildMenu() {
           accelerator: "Alt+W",
           click: () => createPicker(),
         },
+        {
+          label: "Pick Panel Manually (fallback)",
+          accelerator: "Alt+P",
+          click: () =>
+            chartWin &&
+            chartWin.webContents
+              .executeJavaScript(
+                "window.__empiresnapPick && window.__empiresnapPick()",
+                true
+              )
+              .catch(() => {}),
+        },
         { type: "separator" },
         { label: "Home Screen", click: () => createLauncher() },
         {
@@ -306,7 +387,7 @@ function buildMenu() {
           click: () => createChartWindow(),
         },
         { type: "separator" },
-        { role: "quit" },
+        { label: "Exit EmpireSnap", accelerator: "CmdOrCtrl+Q", click: () => { quitting = true; app.quit(); } },
       ],
     },
     {
@@ -350,8 +431,15 @@ function buildMenu() {
 app.whenReady().then(() => {
   registerIpc();
   buildMenu();
-  if (cfgRead().skipLauncher) createChartWindow();
-  else createLauncher();
+
+  // branded splash, then the real first window
+  createSplash();
+  setTimeout(() => {
+    if (cfgRead().skipLauncher) createChartWindow();
+    else createLauncher();
+    closeSplash();
+  }, 1900);
+
   initAutoUpdate();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createLauncher();
@@ -376,6 +464,10 @@ function initAutoUpdate() {
   }
 }
 
+app.on("before-quit", () => {
+  quitting = true;
+});
+
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  app.quit();
 });

@@ -110,6 +110,17 @@ Public repos get unlimited free Actions minutes. Private repos have a monthly
 allowance, and Windows runners bill at 2x — a build only takes a few minutes,
 so either is fine at this volume.
 
+## What's in 1.7.0
+
+- Scroll Capture columns match the original IndiSnap layout: each column is
+  the full dialog at a different scroll position, no section label bars.
+- Home screen credits the full team.
+
+## What's in 1.6.2
+
+- **Fixed: Exit and the window X did nothing once TradingView was loaded** —
+  the page's `beforeunload` guard was vetoing the close.
+
 ## What's in 1.6.1
 
 - Splash screen credits 2QuartersIn, Chizz and the EmpireTrading Team.

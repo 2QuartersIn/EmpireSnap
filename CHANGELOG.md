@@ -2,6 +2,34 @@
 
 All notable changes to EmpireSnap Desktop.
 
+## 1.7.0
+
+### Changed
+- **Scroll Capture columns now match the original IndiSnap layout.** Each
+  column is the whole settings dialog at a different scroll position — title,
+  tabs and Cancel/Ok included — instead of headerless slabs of list with a
+  purple "SECTION n" bar stamped on top. The dialog chrome makes each column
+  self-explanatory, so the labels are gone.
+- Scroll advances by a whole number of rows: the gap between rows nearest the
+  bottom of the visible list is found, and the list scrolls exactly that far,
+  so no setting is split across two columns.
+
+### Added
+- Home screen now credits 2QuartersIn, Chizz and the EmpireTrading Team,
+  matching the splash screen.
+
+## 1.6.2
+
+### Fixed
+- **Exit and the window X did nothing once TradingView was loaded.**
+  TradingView registers a `beforeunload` handler (the "leave site?" guard),
+  and Electron lets the page **veto** a window close — so `app.quit()` ran,
+  the page refused, and the app just sat there. Two changes: the chart window
+  now ignores the page's unload veto (`will-prevent-unload`), and Exit
+  destroys windows rather than politely closing them, with a hard fallback.
+  Verified against a page that guards unload: the window would not close
+  before, and closes after.
+
 ## 1.6.1
 
 ### Added

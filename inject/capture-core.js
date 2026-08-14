@@ -252,45 +252,35 @@
 
     while (i < maxSections) {
       const actual = scroller.scrollTop;
-      // first section keeps the dialog chrome (title + tabs) for context
-      const shot = await shootRegion(i === 0 ? dialog : scroller);
-      let canvas = shot.canvas;
 
-      if (i > 0 && prevTop !== null) {
-        const advanced = actual - prevTop;
-        if (advanced < view) {
-          // scrolled less than a full screen — trim the repeated rows,
-          // converting CSS px to captured px via this shot's own scale
-          const pxPerCss = canvas.height / (shot.rect.height || view);
-          canvas = cropTopPx(canvas, (view - advanced) * pxPerCss);
-        }
-      }
+      /* Capture the WHOLE dialog every time — title, tabs and footer
+       * included — so each column reads as a real settings panel at a
+       * different scroll position, the way IndiSnap did it. Capturing only
+       * the list produced headerless slabs that needed labels to make sense. */
+      const shot = await shootRegion(dialog);
+      const canvas = shot.canvas;
 
-      /* Trim the partial row hanging off the bottom edge, and advance the
-       * scroll by exactly what we kept — so the next section begins on a
-       * clean row boundary instead of slicing one in half. */
-      let advanceCss = view;
+      const dRect = shot.rect;
+      const sRect = scroller.getBoundingClientRect();
+      const pxPerCss = canvas.height / (dRect.height || 1);
       const atEnd = actual + view >= total - 2;
+
+      /* Advance by a whole number of rows: find the gap between rows nearest
+       * the bottom of the visible list, and scroll by exactly that much, so
+       * a setting is never split across two columns. */
+      let advanceCss = view;
       if (!atEnd) {
-        const pxPerCss = canvas.height / (shot.rect.height || view);
-        const ctx2 = canvas.getContext("2d");
-        const searchPx = Math.min(38 * pxPerCss, canvas.height * 0.25);
-        const cut = quietRow(
-          ctx2,
+        const listTopPx = (sRect.top - dRect.top) * pxPerCss;
+        const listBotPx = (sRect.bottom - dRect.top) * pxPerCss;
+        const searchPx = Math.min(34 * pxPerCss, (listBotPx - listTopPx) * 0.25);
+        const snap = quietRow(
+          canvas.getContext("2d"),
           canvas.width,
-          canvas.height - searchPx / 2,
+          listBotPx - searchPx / 2,
           searchPx / 2
         );
-        if (cut > canvas.height * 0.5 && cut < canvas.height) {
-          const trimmed = document.createElement("canvas");
-          trimmed.width = canvas.width;
-          trimmed.height = cut;
-          trimmed
-            .getContext("2d")
-            .drawImage(canvas, 0, 0, canvas.width, cut, 0, 0, canvas.width, cut);
-          canvas = trimmed;
-          advanceCss = cut / pxPerCss;
-        }
+        const candidate = (snap - listTopPx) / pxPerCss;
+        if (candidate > view * 0.55 && candidate <= view) advanceCss = candidate;
       }
 
       shots.push(canvas);
@@ -308,7 +298,10 @@
     hideBars.remove();
     await sleep(60);
     return decorate(
-      stitchSideBySide(shots, opts.scale || 2, labels, opts),
+      stitchSideBySide(shots, opts.scale || 2, labels, {
+        ...opts,
+        labels: opts.labels === true,
+      }),
       captureMeta(dialog),
       opts.scale || 2,
       opts
@@ -329,8 +322,10 @@
     const labelH = 22 * scale;
     const n = canvases.length;
 
+    const showLabels = opts.labels !== false;
+    const lh = showLabels ? labelH : 0;
     const cellW = Math.max(...canvases.map((c) => c.width));
-    const cellH = Math.max(...canvases.map((c) => c.height)) + labelH;
+    const cellH = Math.max(...canvases.map((c) => c.height)) + lh;
 
     // cols such that (cols*cellW) / (rows*cellH) ~= targetRatio
     const targetRatio = opts.ratio || 1.45;
@@ -345,7 +340,7 @@
       let h = 0;
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c;
-        if (i < n) h = Math.max(h, canvases[i].height + labelH);
+        if (i < n) h = Math.max(h, canvases[i].height + lh);
       }
       rowH.push(h);
     }
@@ -368,17 +363,19 @@
         const i = r * cols + c;
         if (i >= n) break;
         const cv = canvases[i];
-        ctx.fillStyle = "#6366F1";
-        ctx.fillRect(x, y, cv.width, labelH);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `700 ${11 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-          String(labels[i] || "Section " + (i + 1)).toUpperCase(),
-          x + 9 * scale,
-          y + labelH / 2
-        );
-        ctx.drawImage(cv, x, y + labelH);
+        if (showLabels) {
+          ctx.fillStyle = "#6366F1";
+          ctx.fillRect(x, y, cv.width, labelH);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `700 ${11 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
+          ctx.textBaseline = "middle";
+          ctx.fillText(
+            String(labels[i] || "Section " + (i + 1)).toUpperCase(),
+            x + 9 * scale,
+            y + labelH / 2
+          );
+        }
+        ctx.drawImage(cv, x, y + lh);
         x += cellW + gap;
       }
       y += rowH[r] + gap;

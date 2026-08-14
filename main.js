@@ -74,6 +74,27 @@ function inject(wc) {
   );
 }
 
+/* ---------- quitting ----------
+ * TradingView registers a `beforeunload` handler (the "leave site?" guard).
+ * Electron honours it, so a plain app.quit() or window close gets VETOED by
+ * the page and the app just sits there — which is exactly why Exit and the
+ * window X appeared dead. We destroy windows instead of closing them
+ * (destroy skips beforeunload entirely) and keep a hard fallback. */
+function forceQuit() {
+  quitting = true;
+  for (const w of BrowserWindow.getAllWindows()) {
+    try {
+      w.destroy();
+    } catch (e) {}
+  }
+  app.quit();
+  setTimeout(() => {
+    try {
+      app.exit(0);
+    } catch (e) {}
+  }, 500);
+}
+
 /* ---------- splash ---------- */
 function createSplash() {
   splashWin = new BrowserWindow({
@@ -156,6 +177,9 @@ function createChartWindow() {
   const wc = chartWin.webContents;
   wc.on("did-finish-load", () => inject(wc));
 
+  // ignore the page's beforeunload veto so the window's X actually closes
+  wc.on("will-prevent-unload", (event) => event.preventDefault());
+
   wc.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: "deny" };
@@ -213,8 +237,7 @@ function registerIpc() {
   ipcMain.handle("empiresnap:get-version", () => app.getVersion());
 
   ipcMain.handle("empiresnap:quit", () => {
-    quitting = true;
-    app.quit();
+    forceQuit();
     return true;
   });
 
@@ -399,7 +422,11 @@ function buildMenu() {
           click: () => createChartWindow(),
         },
         { type: "separator" },
-        { label: "Exit EmpireSnap", accelerator: "CmdOrCtrl+Q", click: () => { quitting = true; app.quit(); } },
+        {
+          label: "Exit EmpireSnap",
+          accelerator: "CmdOrCtrl+Q",
+          click: () => forceQuit(),
+        },
       ],
     },
     {

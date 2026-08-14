@@ -2,6 +2,35 @@
 
 All notable changes to EmpireSnap Desktop.
 
+## 1.9.1
+
+### Fixed — macOS
+- **The Mac app was completely unsigned, which is a dead end on Apple
+  Silicon.** macOS refuses to run an unsigned bundle and calls it "damaged",
+  and because the launch never reaches Gatekeeper's normal path, **no "Open
+  Anyway" button ever appears** in System Settings — leaving the user stuck
+  with no visible way forward. The build now **ad-hoc signs** the app bundle
+  (`codesign --sign -`) via an `afterPack` hook. Ad-hoc signing is free and
+  needs no Apple account; it puts the app back on the normal Gatekeeper path
+  so the standard "unverified developer" prompt and the Open Anyway button
+  work as documented.
+
+### Docs
+- README now leads with a **Download** section (Windows / macOS Apple Silicon /
+  macOS Intel) plus latest-release and download-count badges, so the repo front
+  page offers the installers directly. Version history moved out of the README
+  into this file rather than being duplicated in both.
+
+### If a Mac still won't open it
+Run the app from **/Applications**, not from the mounted DMG — an app launched
+from a DMG gets relocated by macOS and often never appears in Privacy &
+Security at all. If it is still blocked:
+
+```
+xattr -dr com.apple.quarantine /Applications/EmpireSnap.app
+codesign --force --deep --sign - /Applications/EmpireSnap.app
+```
+
 ## 1.9.0
 
 ### Added

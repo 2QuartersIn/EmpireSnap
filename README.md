@@ -1,8 +1,29 @@
-# EmpireSnap Desktop (EmpireSnap)
+# EmpireSnap
 
-A **standalone Windows app** — no browser extension, no Chrome Web Store, no
-Tampermonkey. It opens TradingView in its own app window and adds the capture
-button directly.
+Capture a TradingView indicator's **entire** settings — every tab, including
+rows scrolled out of view — as one shareable image.
+
+## ⬇️ Download
+
+| Platform | File |
+|---|---|
+| **Windows** | [**Download installer**](https://github.com/2QuartersIn/EmpireSnap/releases/latest) — `EmpireSnap-setup.exe` |
+| **macOS (Apple Silicon)** | [**Download**](https://github.com/2QuartersIn/EmpireSnap/releases/latest) — `mac-arm64.dmg` |
+| **macOS (Intel)** | [**Download**](https://github.com/2QuartersIn/EmpireSnap/releases/latest) — `mac-x64.dmg` |
+
+[![Latest release](https://img.shields.io/github/v/release/2QuartersIn/EmpireSnap?label=latest&color=6366f1)](https://github.com/2QuartersIn/EmpireSnap/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/2QuartersIn/EmpireSnap/total?color=6366f1)](https://github.com/2QuartersIn/EmpireSnap/releases)
+
+**First launch — Windows:** SmartScreen will warn, since the app isn't code
+signed. Click **More info** → **Run anyway**.
+
+**First launch — macOS:** drag EmpireSnap to your **Applications** folder
+first (running it from the mounted DMG causes macOS to relocate it). macOS
+will block it on first open: click **Done**, then go to **System Settings →
+Privacy & Security**, scroll to the bottom, click **Open Anyway**, and confirm.
+Once per install.
+
+---
 
 ## Why it embeds a browser (and not screen-recording)
 
@@ -110,147 +131,9 @@ Public repos get unlimited free Actions minutes. Private repos have a monthly
 allowance, and Windows runners bill at 2x — a build only takes a few minutes,
 so either is fine at this volume.
 
-## What's in 1.9.0
+## Version history
 
-- **macOS build** — `.dmg` and `.zip` for Apple Silicon and Intel, built
-  alongside Windows by the same workflow.
-- macOS app menu, Edit menu, and a Screen Recording permission check.
-- Unsigned on macOS: first launch needs **System Settings → Privacy & Security
-  → Open Anyway** (the Control-click trick was removed in macOS Sequoia).
-
-## What's in 1.8.0
-
-- Real EmpireSnap logo on the splash, home screen, taskbar, installer and
-  extension icons. Capture footer credits EmpireTrading.
-
-## What's in 1.7.2
-
-- Splash byline reads "by EmpireTrading".
-
-## What's in 1.7.1
-
-- **Fixed: "Home Screen" opened a second window** instead of returning to the
-  home screen. It now navigates back and hides the chart window, so
-  TradingView keeps its session (`Alt`+`H`).
-
-## What's in 1.7.0
-
-- Scroll Capture columns match the original IndiSnap layout: each column is
-  the full dialog at a different scroll position, no section label bars.
-- Home screen credits the full team.
-
-## What's in 1.6.2
-
-- **Fixed: Exit and the window X did nothing once TradingView was loaded** —
-  the page's `beforeunload` guard was vetoing the close.
-
-## What's in 1.6.1
-
-- Splash screen credits 2QuartersIn, Chizz and the EmpireTrading Team.
-
-## What's in 1.6.0
-
-- Branded header (indicator, symbol, timeframe, tab, timestamp) and footer
-  credit on every capture.
-- Scrollbars hidden during capture; section boundaries snap to row edges so
-  no setting is sliced in half; slimmer section labels.
-
-## What's in 1.5.2
-
-- **Scroll Capture sections wrap into a grid** instead of one very long row.
-  A 21-section capture goes from ~9,000px wide to 2226x1198.
-
-## What's in 1.5.1
-
-- **Close and minimise buttons on the home screen.** It's a frameless window,
-  so it had no title bar and no way to quit from it.
-
-## What's in 1.5.0
-
-- **Scroll Capture (this tab)** — the original IndiSnap technique. Instead of
-  expanding the settings list and re-drawing it, EmpireSnap scrolls the real
-  list one screenful at a time, takes a **native screenshot** of each, and
-  lays the sections out side by side. In the camera menu, or `Alt`+`A`.
-- **Why it matters:** the expand-and-render path re-draws the DOM with
-  html2canvas. If TradingView only renders the settings rows currently in
-  view (virtualised list), everything off-screen renders blank — in testing
-  against a virtualised list, expand mode captured 9 of 48 settings and left
-  1,400px of empty space, while scroll capture got all 48. Scroll capture
-  also reproduces custom controls and colour swatches exactly, since it
-  photographs real pixels rather than re-drawing them.
-- Scroll capture needs the native screenshot bridge, so it is **desktop-app
-  only**. In the extension/userscript it falls back to expand-and-render.
-
-**Which mode to use:** try Scroll Capture first for a single tab — it is the
-most faithful. Use Capture All Tabs when you need every tab in one image.
-
-## What's in 1.4.0
-
-- **Exit now actually exits.** Closing the chart or picker window used to
-  re-open the home screen, so Exit appeared to bounce you back to the two
-  options instead of quitting. Windows now close cleanly and Exit quits.
-- **"Pick Element" removed from the camera menu.** It was a developer
-  fallback, not something to offer users. Still reachable when auto-detection
-  misses, via the app menu: *Pick Panel Manually (fallback)*, `Alt`+`P`.
-- **"Home Screen" added to the camera menu**, so you can get back from
-  TradingView without restarting.
-- **One window picker, everywhere.** Choosing *Capture a Window* inside
-  TradingView used to open a cut-down in-page overlay with no crop and no
-  back button; it now opens the same picker window as the home screen, with
-  the crop tool and Back.
-
-## What's in 1.3.0
-
-- **Side-by-side column layout is back (and is now the default).** Stacking
-  every tab into one strip produced images ~460px wide and 5,000–20,000px
-  tall — complete, but unreadable and impossible to share. Captures now flow
-  into columns sized for a landscape image (a 140-setting indicator goes from
-  458x5559 to 2226x1431).
-- Splits **snap to the gap between settings rows** rather than slicing through
-  one, by scanning for a low-variance pixel row near the break point.
-  Continued columns are labelled `INPUTS (CONT.)`.
-- **Layout toggle** in the camera menu — *Columns* (default) or *Single* for
-  the old one-strip behaviour. The choice is remembered.
-
-## What's in 1.2.0
-
-- **Branded splash screen** on launch — logo, EmpireSnap, "by 2QuartersIn" —
-  then the home screen. (Rendered opaque rather than transparent, because
-  transparent windows render unreliably on Windows.)
-- **Back button** in the window picker, so you can return to the home screen
-  and switch to TradingView capture without restarting the app.
-- **Drag-to-crop.** Window/screen capture grabs the whole source, which is
-  rarely what you want. After capturing, drag a box over the preview to keep
-  just that region; the crop is applied at full source resolution, not at
-  preview scale. **Reset crop** clears it. Save and Copy both respect it.
-
-## What's in 1.1.1
-
-- **Fixed: close buttons in the capture preview.** The 1.1.0 event shield
-  routed all EmpireSnap UI clicks through one central handler, but that
-  handler only recognised buttons carrying a `data-a` attribute — so the `×`,
-  the backdrop, and the window-source cards were swallowed and did nothing.
-  Dispatch is now generic (it walks up to the nearest element with an
-  `onclick`), so every control in our UI responds. All three ways of closing
-  the preview — `×`, **Close**, and clicking the dimmed backdrop — are
-  covered by tests.
-
-## What's in 1.1.0
-
-- **Branded home screen** on launch — choose *TradingView Settings Capture* or
-  *Capture a Window or Screen*. Tick "Skip this screen next time" to go
-  straight to TradingView on future launches.
-- **Window / screen capture** — pick any open window or monitor and snapshot
-  it, at full resolution. Available from the home screen, the in-app menu
-  (`Alt`+`W`), or the camera button's menu. Note this captures only what is
-  *visible* on that window; for settings that are scrolled out of view or on
-  other tabs, use **Capture All Tabs**.
-- **Fixed: capturing no longer closes the settings dialog.** TradingView
-  dismisses its dialog on any pointer press outside it, and it reacts on
-  pointerdown — before a click ever lands. Pressing the camera button was
-  therefore closing the very dialog being captured. EmpireSnap now intercepts
-  pointer events aimed at its own UI in the capture phase, so the page never
-  sees them. Clicks genuinely outside still dismiss the dialog as normal.
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## Using it
 

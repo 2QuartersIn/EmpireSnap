@@ -1,0 +1,55 @@
+name: Build EmpireSnap (Windows)
+
+# Builds the Windows installer in the cloud — no Node, npm, or git needed
+# on your own machine.
+#
+# Two ways to trigger it:
+#   1. Actions tab -> "Build EmpireSnap (Windows)" -> "Run workflow"
+#      (produces downloadable artifacts)
+#   2. Publish a Release, or push a tag like v1.0.1
+#      (also uploads the installer to that Release, which is what
+#       the app's auto-updater reads)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node (on the runner, not your machine)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build installer + portable exe
+        # GH_TOKEN is provided automatically; electron-builder uses it to
+        # attach artifacts to the Release when triggered by a tag/release.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis portable --publish onTagOrDraft
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: EmpireSnap-windows
+          path: |
+            dist/*.exe
+            dist/latest.yml
+          if-no-files-found: error
+          retention-days: 30

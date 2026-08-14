@@ -110,6 +110,21 @@ Public repos get unlimited free Actions minutes. Private repos have a monthly
 allowance, and Windows runners bill at 2x — a build only takes a few minutes,
 so either is fine at this volume.
 
+## What's in 1.8.0
+
+- Real EmpireSnap logo on the splash, home screen, taskbar, installer and
+  extension icons. Capture footer credits EmpireTrading.
+
+## What's in 1.7.2
+
+- Splash byline reads "by EmpireTrading".
+
+## What's in 1.7.1
+
+- **Fixed: "Home Screen" opened a second window** instead of returning to the
+  home screen. It now navigates back and hides the chart window, so
+  TradingView keeps its session (`Alt`+`H`).
+
 ## What's in 1.7.0
 
 - Scroll Capture columns match the original IndiSnap layout: each column is

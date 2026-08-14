@@ -485,7 +485,7 @@
     ctx.font = `500 ${12 * scale}px -apple-system, Segoe UI, Roboto, sans-serif`;
     ctx.textAlign = "center";
     ctx.fillText(
-      "Captured with EmpireSnap  ·  2QuartersIn",
+      "Captured with EmpireSnap  ·  EmpireTrading",
       out.width / 2,
       out.height - footH / 2
     );

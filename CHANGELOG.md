@@ -2,6 +2,50 @@
 
 All notable changes to EmpireSnap Desktop.
 
+## 1.8.0
+
+### Added
+- **Real EmpireSnap logo throughout.** The Spartan artwork replaces the
+  placeholder camera icon on the splash screen, the home screen, the window
+  and taskbar icon, the installer, and the browser-extension icons. Generated
+  as a 512px PNG and a multi-size `.ico` (16/24/32/48/64/128/256) from the
+  supplied artwork, trimmed of its transparent margin.
+- The logo is shown on its own rather than inside the indigo tile the
+  placeholder needed, with a soft glow so it reads on the dark background.
+
+### Changed
+- Capture footer now reads "Captured with EmpireSnap - EmpireTrading".
+
+### Note
+- The source artwork is 180x188, so the 256px and 512px icons are upscaled and
+  will be slightly soft at large sizes. A higher-resolution original (512px or
+  above) would sharpen the installer and taskbar icons; nothing else needs to
+  change.
+
+## 1.7.2
+
+### Changed
+- Splash screen byline now reads **by EmpireTrading** instead of
+  "by 2QuartersIn", so the umbrella brand leads. The credit line
+  underneath is unchanged.
+
+### Known
+- Splash, home screen, taskbar and installer still use a placeholder camera
+  icon. Replacing it needs the real logo artwork; drop a square PNG in as
+  `build/icon.png` (and `build/icon.ico` for the installer).
+
+## 1.7.1
+
+### Fixed
+- **"Home Screen" opened a second window instead of going back.** Both the
+  camera menu entry and the app menu called `createLauncher()` directly, which
+  left the TradingView window on screen alongside the new one — the app looked
+  like it had duplicated itself rather than navigated. Both now route through
+  a single `goHome()` that shows the home screen and **hides** the chart
+  window. Hiding rather than closing means TradingView keeps its session and
+  returns instantly; reopening it reuses that window instead of building a new
+  one. Added `Alt`+`H` as a shortcut.
+
 ## 1.7.0
 
 ### Changed

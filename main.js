@@ -150,9 +150,28 @@ function createLauncher() {
   });
 }
 
+/* Return to the home screen.
+ *
+ * "Home Screen" used to just call createLauncher(), which left the chart
+ * window sitting there and put a second window on screen — the app looked
+ * like it had opened a duplicate rather than navigated back. We hide the
+ * chart window instead of closing it, so TradingView keeps its session and
+ * comes back instantly, and close the picker. */
+function goHome() {
+  if (quitting) return;
+  createLauncher();
+  if (chartWin && !chartWin.isDestroyed() && chartWin.isVisible()) chartWin.hide();
+  if (pickerWin && !pickerWin.isDestroyed()) pickerWin.close();
+  if (launcherWin) {
+    launcherWin.show();
+    launcherWin.focus();
+  }
+}
+
 /* ---------- TradingView chart window ---------- */
 function createChartWindow() {
-  if (chartWin) {
+  if (chartWin && !chartWin.isDestroyed()) {
+    chartWin.show(); // may have been hidden by goHome()
     chartWin.focus();
     return chartWin;
   }
@@ -255,13 +274,12 @@ function registerIpc() {
 
   ipcMain.handle("empiresnap:open-tradingview", () => {
     createChartWindow();
-    if (launcherWin) launcherWin.close();
+    if (launcherWin && !launcherWin.isDestroyed()) launcherWin.close();
     return true;
   });
 
   ipcMain.handle("empiresnap:open-launcher", () => {
-    createLauncher();
-    if (pickerWin) pickerWin.close();
+    goHome();
     return true;
   });
 
@@ -415,7 +433,7 @@ function buildMenu() {
               .catch(() => {}),
         },
         { type: "separator" },
-        { label: "Home Screen", click: () => createLauncher() },
+        { label: "Home Screen", accelerator: "Alt+H", click: () => goHome() },
         {
           label: "TradingView",
           accelerator: "CmdOrCtrl+H",

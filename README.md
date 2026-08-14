@@ -110,6 +110,17 @@ Public repos get unlimited free Actions minutes. Private repos have a monthly
 allowance, and Windows runners bill at 2x — a build only takes a few minutes,
 so either is fine at this volume.
 
+## What's in 1.1.1
+
+- **Fixed: close buttons in the capture preview.** The 1.1.0 event shield
+  routed all EmpireSnap UI clicks through one central handler, but that
+  handler only recognised buttons carrying a `data-a` attribute — so the `×`,
+  the backdrop, and the window-source cards were swallowed and did nothing.
+  Dispatch is now generic (it walks up to the nearest element with an
+  `onclick`), so every control in our UI responds. All three ways of closing
+  the preview — `×`, **Close**, and clicking the dimmed backdrop — are
+  covered by tests.
+
 ## What's in 1.1.0
 
 - **Branded home screen** on launch — choose *TradingView Settings Capture* or

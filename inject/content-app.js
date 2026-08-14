@@ -172,9 +172,23 @@
       return runCapture(mode);
     }
 
-    // preview modal + coach mark buttons register their own onclick
-    const own = t.closest("[data-a]");
-    if (own && typeof own.onclick === "function") own.onclick(e);
+    /* Generic dispatch. The shield stops events before they reach our own
+     * elements, so anything that registered its own handler (the × close
+     * button, Download, Copy, a source card) has to be invoked from here.
+     * Walk up from the target to the nearest ancestor inside our UI that
+     * has an onclick and call it — this is why our controls use .onclick
+     * rather than addEventListener. */
+    let n = t;
+    while (n && n.closest && n.closest(OURS)) {
+      if (typeof n.onclick === "function") {
+        n.onclick(e);
+        return;
+      }
+      n = n.parentElement;
+    }
+
+    // click on the dimmed backdrop itself closes the overlay
+    if (t.classList && t.classList.contains("empiresnap-overlay")) t.remove();
   }
 
   const native =
@@ -234,7 +248,7 @@
     // set names as text (avoids HTML injection from window titles)
     ov.querySelectorAll(".empiresnap-src").forEach((el, i) => {
       el.querySelector(".nm").textContent = list[i].name;
-      el.addEventListener("click", async () => {
+      el.onclick = async () => {
         ov.remove();
         showBusy(true);
         try {
@@ -257,12 +271,9 @@
           showBusy(false);
           toast("Capture failed: " + (err.message || err), "err");
         }
-      });
+      };
     });
     ov.querySelector(".empiresnap-x").onclick = () => ov.remove();
-    ov.addEventListener("click", (e) => {
-      if (e.target === ov) ov.remove();
-    });
   }
 
   async function runCapture(mode, targetEl) {
@@ -368,9 +379,6 @@
 
     const close = () => overlay.remove();
     overlay.querySelector(".empiresnap-x").onclick = close;
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) close();
-    });
     overlay.querySelector('[data-a="close"]').onclick = close;
     overlay.querySelector('[data-a="dl"]').onclick = async () => {
       await Core.download(canvas);

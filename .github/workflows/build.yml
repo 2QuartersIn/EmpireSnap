@@ -1,13 +1,13 @@
-name: Build EmpireSnap (Windows)
+name: Build EmpireSnap (Windows + macOS)
 
-# Builds the Windows installer in the cloud — no Node, npm, or git needed
-# on your own machine.
+# Builds installers for both platforms in the cloud - no Node, and no Mac,
+# needed on your own machine. GitHub runs the macOS job on a real Mac.
 #
 # Two ways to trigger it:
-#   1. Actions tab -> "Build EmpireSnap (Windows)" -> "Run workflow"
+#   1. Actions tab -> "Build EmpireSnap (Windows + macOS)" -> "Run workflow"
 #      (produces downloadable artifacts)
-#   2. Publish a Release, or push a tag like v1.0.1
-#      (also uploads the installer to that Release, which is what
+#   2. Publish a Release, or push a tag like v1.9.0
+#      (also uploads the installers to that Release, which is what
 #       the app's auto-updater reads)
 
 on:
@@ -23,7 +23,18 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            args: --win nsis portable
+          - os: macos-latest
+            name: macos
+            args: --mac dmg zip
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Check out source
@@ -37,19 +48,24 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build installer + portable exe
+      - name: Build ${{ matrix.name }}
         # GH_TOKEN is provided automatically; electron-builder uses it to
         # attach artifacts to the Release when triggered by a tag/release.
+        # CSC_IDENTITY_AUTO_DISCOVERY=false stops the macOS job trying to
+        # code-sign with a certificate we don't have.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win nsis portable --publish onTagOrDraft
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder ${{ matrix.args }} --publish onTagOrDraft
 
       - name: Upload build output
         uses: actions/upload-artifact@v4
         with:
-          name: EmpireSnap-windows
+          name: EmpireSnap-${{ matrix.name }}
           path: |
             dist/*.exe
-            dist/latest.yml
-          if-no-files-found: error
+            dist/*.dmg
+            dist/*.zip
+            dist/latest*.yml
+          if-no-files-found: warn
           retention-days: 30

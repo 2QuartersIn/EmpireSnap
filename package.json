@@ -1,7 +1,7 @@
 {
   "name": "empiresnap-desktop",
   "productName": "EmpireSnap",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Capture a TradingView indicator's entire settings dialog into one shareable image \u2014 standalone desktop app.",
   "author": "2QuartersIn",
   "main": "main.js",
@@ -9,7 +9,8 @@
     "start": "electron .",
     "dist": "electron-builder --win nsis portable",
     "dist:installer": "electron-builder --win nsis",
-    "publish": "electron-builder --win nsis --publish always"
+    "publish": "electron-builder --win nsis --publish always",
+    "dist:mac": "electron-builder --mac dmg zip"
   },
   "devDependencies": {
     "electron": "^31.7.0",
@@ -60,6 +61,33 @@
         "owner": "2QuartersIn",
         "repo": "EmpireSnap"
       }
-    ]
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.finance",
+      "artifactName": "EmpireSnap-${version}-mac-${arch}.${ext}",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "artifactName": "EmpireSnap-${version}-mac-${arch}.dmg"
+    }
   }
 }

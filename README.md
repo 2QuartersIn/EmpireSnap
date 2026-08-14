@@ -110,6 +110,14 @@ Public repos get unlimited free Actions minutes. Private repos have a monthly
 allowance, and Windows runners bill at 2x — a build only takes a few minutes,
 so either is fine at this volume.
 
+## What's in 1.9.0
+
+- **macOS build** — `.dmg` and `.zip` for Apple Silicon and Intel, built
+  alongside Windows by the same workflow.
+- macOS app menu, Edit menu, and a Screen Recording permission check.
+- Unsigned on macOS: first launch needs **System Settings → Privacy & Security
+  → Open Anyway** (the Control-click trick was removed in macOS Sequoia).
+
 ## What's in 1.8.0
 
 - Real EmpireSnap logo on the splash, home screen, taskbar, installer and

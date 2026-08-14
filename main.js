@@ -16,6 +16,7 @@ const {
   screen,
   clipboard,
   nativeImage,
+  systemPreferences,
 } = require("electron");
 const fs = require("fs");
 const path = require("path");
@@ -297,7 +298,30 @@ function registerIpc() {
   });
 
   /* list capturable sources with preview thumbnails */
-  ipcMain.handle("empiresnap:list-sources", async () => {
+  /* macOS requires Screen Recording permission before desktopCapturer
+   * returns anything; without it sources come back black with no error. */
+  function screenPermissionOK(parentWin) {
+    if (process.platform !== "darwin") return true;
+    let status = "granted";
+    try {
+      status = systemPreferences.getMediaAccessStatus("screen");
+    } catch (e) {}
+    if (status === "granted") return true;
+    dialog.showMessageBox(parentWin || undefined, {
+      type: "info",
+      title: "Screen Recording permission needed",
+      message: "macOS needs permission before EmpireSnap can capture windows.",
+      detail:
+        "Open System Settings > Privacy & Security > Screen Recording, " +
+        "enable EmpireSnap, then quit and reopen the app.\n\n" +
+        "TradingView Settings Capture works without this permission.",
+      buttons: ["OK"],
+    });
+    return false;
+  }
+
+  ipcMain.handle("empiresnap:list-sources", async (e) => {
+    if (!screenPermissionOK(BrowserWindow.fromWebContents(e.sender))) return [];
     const sources = await desktopCapturer.getSources({
       types: ["window", "screen"],
       thumbnailSize: { width: 320, height: 200 },
@@ -374,10 +398,32 @@ function registerIpc() {
 }
 
 /* ---------- menu ---------- */
+const isMac = process.platform === "darwin";
+
 function buildMenu() {
   const template = [
+    /* On macOS the FIRST menu is the app menu — without it there is no
+     * Cmd+Q, no Hide, no About. Windows and Linux don't have this. */
+    ...(isMac
+      ? [
+          {
+            label: "EmpireSnap",
+            submenu: [
+              { role: "about" },
+              { type: "separator" },
+              { role: "hide" },
+              { role: "hideOthers" },
+              { role: "unhide" },
+              { type: "separator" },
+              { label: "Quit EmpireSnap", accelerator: "Command+Q", click: () => forceQuit() },
+            ],
+          },
+        ]
+      : []),
     {
-      label: "EmpireSnap",
+      // on macOS the app menu is already called EmpireSnap, so name ours
+      // for what it does instead of duplicating the brand
+      label: isMac ? "Capture" : "EmpireSnap",
       submenu: [
         {
           label: "Capture All Tabs",
@@ -440,11 +486,27 @@ function buildMenu() {
           click: () => createChartWindow(),
         },
         { type: "separator" },
-        {
-          label: "Exit EmpireSnap",
-          accelerator: "CmdOrCtrl+Q",
-          click: () => forceQuit(),
-        },
+        ...(isMac
+          ? []
+          : [
+              {
+                label: "Exit EmpireSnap",
+                accelerator: "Ctrl+Q",
+                click: () => forceQuit(),
+              },
+            ]),
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
       ],
     },
     {

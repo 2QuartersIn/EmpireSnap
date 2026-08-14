@@ -2,6 +2,43 @@
 
 All notable changes to EmpireSnap Desktop.
 
+## 1.9.0
+
+### Added
+- **macOS build.** `.dmg` and `.zip` for both Apple Silicon (arm64) and Intel
+  (x64). The GitHub workflow now builds Windows and macOS side by side on a
+  matrix, so a single "Run workflow" produces installers for both — GitHub
+  supplies the Mac.
+- Generated `build/icon.icns` from the logo for the macOS app icon.
+
+### Changed (macOS-specific)
+- Added the standard macOS **app menu** (About / Hide / Quit with Cmd+Q).
+  Without it a Mac app has no Quit and no Hide.
+- Added an **Edit menu** (undo/cut/copy/paste/select-all). On macOS these
+  keyboard shortcuts stop working entirely unless the menu roles exist.
+- Our capture menu is named **Capture** on macOS, since the app menu is
+  already called EmpireSnap and two identical menus is confusing. It stays
+  "EmpireSnap" on Windows.
+- **Screen Recording permission check.** macOS gates window capture behind a
+  system permission, and without it `desktopCapturer` returns black
+  thumbnails with no error at all. EmpireSnap now detects that and explains
+  where to grant it, rather than showing an empty picker.
+
+### Known — macOS
+- The build is **unsigned and not notarized**, so macOS blocks it on first
+  launch. **The old Control-click → Open trick no longer works** (Apple removed
+  it in macOS Sequoia). The current steps are:
+  1. Double-click EmpireSnap. A warning appears — click **Done**.
+  2. Open **System Settings → Privacy & Security**, scroll to the bottom.
+  3. Next to "EmpireSnap was blocked to protect your Mac", click **Open Anyway**.
+  4. Authenticate with your admin password, then click **Open Anyway** again.
+  Only needed once per install. Note the button appears for roughly an hour
+  after the blocked launch — if it isn't there, try launching the app again.
+- Removing this entirely requires an **Apple Developer account ($99/year)** for
+  signing and notarization. Not required to build or distribute — only to give
+  users a clean double-click. It is a harsher hurdle than the Windows
+  SmartScreen warning, which is still just "More info → Run anyway".
+
 ## 1.8.0
 
 ### Added

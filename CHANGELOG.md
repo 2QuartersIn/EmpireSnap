@@ -15,6 +15,16 @@ All notable changes to EmpireSnap Desktop.
   so the standard "unverified developer" prompt and the Open Anyway button
   work as documented.
 
+### CI
+- **Manual "Run workflow" builds now attach the installers to the release.**
+  A manual run isn't a tag build, so electron-builder skipped publishing and
+  the installers only ever existed as run artifacts — which is why a release
+  created by hand showed nothing but "Source code". The workflow now uploads
+  `dist/*.exe` and `dist/*.dmg` straight onto the release (the latest one by
+  default, or a tag you type into the Run workflow box). The `latest*.yml`
+  files go up too — electron-updater reads those, so silent auto-updates
+  only work once they are attached to the release.
+
 ### Docs
 - README now leads with a **Download** section (Windows / macOS Apple Silicon /
   macOS Intel) plus latest-release and download-count badges, so the repo front

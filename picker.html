@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Capture a Window</title>
+    <style>
+      :root {
+        --indigo: #6366f1;
+        --indigo-d: #4f46e5;
+        --bg: #0e0f14;
+        --card: #191b23;
+        --line: #2a2d38;
+        --text: #e9eaf0;
+        --dim: #8b90a3;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        user-select: none;
+      }
+      header {
+        padding: 16px 20px 12px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      header h1 { margin: 0; font-size: 15px; }
+      header .dim { color: var(--dim); font-size: 12px; }
+      header #back-home {
+        background: #232634; color: var(--text);
+        border: 1px solid var(--line); border-radius: 8px;
+        padding: 7px 12px; font-size: 12px; cursor: pointer; margin-right: 4px;
+      }
+      header #back-home:hover { background: #2c3040; border-color: var(--indigo); }
+      header #refresh {
+        margin-left: auto;
+        background: #232634; color: var(--text);
+        border: 1px solid var(--line); border-radius: 8px;
+        padding: 7px 13px; font-size: 12px; cursor: pointer;
+      }
+      header button:hover { background: #2c3040; }
+
+      .grid {
+        flex: 1; overflow-y: auto; padding: 16px 20px 20px;
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 14px; align-content: start;
+      }
+      .src {
+        background: var(--card); border: 1px solid var(--line);
+        border-radius: 11px; overflow: hidden; cursor: pointer;
+        transition: border-color 0.15s, transform 0.12s;
+        display: flex; flex-direction: column;
+      }
+      .src:hover { border-color: var(--indigo); transform: translateY(-2px); }
+      .src .thumb {
+        height: 132px; background: #05060a;
+        display: flex; align-items: center; justify-content: center; overflow: hidden;
+      }
+      .src .thumb img { max-width: 100%; max-height: 100%; }
+      .src .cap { padding: 9px 11px; font-size: 12px; display: flex; gap: 6px; align-items: center; }
+      .src .cap .tag {
+        font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em;
+        background: rgba(99,102,241,.18); color: #aab0ff;
+        padding: 2px 5px; border-radius: 4px; flex: none;
+      }
+      .src .cap span.nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      .state { padding: 40px; text-align: center; color: var(--dim); font-size: 13px; grid-column: 1/-1; }
+
+      /* preview */
+      .overlay {
+        position: fixed; inset: 0; background: rgba(6,7,11,.82);
+        display: none; align-items: center; justify-content: center; padding: 22px;
+      }
+      .overlay.show { display: flex; }
+      .modal {
+        background: #15171e; border: 1px solid var(--line); border-radius: 15px;
+        max-width: 94vw; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;
+      }
+      .modal .hd { padding: 13px 17px; border-bottom: 1px solid var(--line); display: flex; gap: 9px; align-items: center; }
+      .modal .hd .dot { width: 11px; height: 11px; border-radius: 50%; background: linear-gradient(135deg,var(--indigo),var(--indigo-d)); }
+      .modal .bd { overflow: auto; padding: 15px; background: #0b0c11; display: flex; justify-content: center; }
+      .modal .bd img { max-width: 100%; border-radius: 7px; }
+      .modal .ft { padding: 13px 17px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 9px; }
+      .btn {
+        border: 1px solid var(--line); background: #232634; color: var(--text);
+        padding: 9px 15px; border-radius: 9px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+      }
+      .btn:hover { background: #2c3040; }
+      .btn.primary { background: linear-gradient(135deg,var(--indigo),var(--indigo-d)); border-color: transparent; }
+      .cropwrap { position: relative; display: inline-block; line-height: 0; cursor: crosshair; }
+      .cropwrap img { display: block; }
+      .sel {
+        position: absolute; display: none; border: 2px solid #6366f1;
+        background: rgba(99,102,241,.18); pointer-events: none;
+        box-shadow: 0 0 0 9999px rgba(4,5,9,.55);
+      }
+      .sel.on { display: block; }
+      .ft .hint { margin-right: auto; font-size: 11.5px; color: var(--dim); align-self: center; }
+      .toast {
+        position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+        background: #16a34a; color: #fff; padding: 9px 16px; border-radius: 9px;
+        font-size: 12.5px; font-weight: 600; opacity: 0; transition: opacity .25s;
+      }
+      .toast.show { opacity: 1; }
+      .toast.err { background: #dc2626; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button id="back-home" title="Back to home screen">← Back</button>
+      <h1>Capture a Window or Screen</h1>
+      <span class="dim">Captures what is visible on the chosen source</span>
+      <button id="refresh">↻ Refresh</button>
+    </header>
+
+    <div class="grid" id="grid">
+      <div class="state">Loading sources…</div>
+    </div>
+
+    <div class="overlay" id="ov">
+      <div class="modal">
+        <div class="hd"><span class="dot"></span><strong id="pvname">Capture</strong></div>
+        <div class="bd">
+          <div class="cropwrap" id="cropwrap">
+            <img id="pvimg" alt="capture preview" />
+            <div class="sel" id="sel"></div>
+          </div>
+        </div>
+        <div class="ft">
+          <span class="hint" id="hint">Drag on the image to crop to just the part you need</span>
+          <button class="btn" id="reset">Reset crop</button>
+          <button class="btn" id="back">Back</button>
+          <button class="btn" id="copy">Copy image</button>
+          <button class="btn primary" id="save">Save PNG</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <script src="renderer-picker.js"></script>
+  </body>
+</html>
